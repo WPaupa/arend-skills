@@ -15,6 +15,8 @@ Library citations of the form `Module/File.ard:NNN` are relative to `/home/serge
 Companion skills:
 - **arend-formalize** — procedural workflow for going from an informal math statement to a typechecking `.ard` file (which CLI tools to use, in what order).
 - **arend-prove** — catalog of metas (`rewrite`, `ext`, `simplify`, `linarith`, …) for closing equality and algebra goals.
+- **arend-levels** — the failure modes of §5 below: which definitions need `.{u}`, and how to read a level error.
+- **arend-hott** — conventions and pitfalls specific to the `Homotopy/` tree.
 
 ---
 
@@ -129,6 +131,23 @@ What Arend does (`tutorial/PartI/records.md`, `language-reference/definitions/re
 - `\cowith` gives copattern-style definition: `\func zeros : Pair Nat Nat \cowith | fst => 0 | snd => 0`. Equivalent to `\new`, but can be the body of a `\func`.
 - **Properties**: `\property p : P` requires `P` to be a proposition. Fields whose type is provably in `\Prop` are auto-promoted to properties unless marked `\field`. Properties don't compute — important for proof UX and performance.
 - **Diamond handling**: `\extends A, B` where both extend `C` deduplicates `C`'s fields. But if `A` and `B` each independently define a field with the same name, you get two distinct fields and need qualified access `A.f {r}` vs `B.f {r}`. The algebraic-hierarchy advice is: avoid `\extends AbGroup, Monoid` for rings — use `\extends AbGroup { | mulMonoid : Monoid A }` to keep `*` and `+` in separate fields.
+- **An `\instance`'s classifying expression must be syntactically recognizable.** Writing
+  `\instance F (n : Nat) (X : C) : SomeClass (myFunc n X)` is rejected with
+
+      Classifying field must be either a universe, a sigma type, a record, or a partially applied data or constructor
+
+  even when `myFunc n X` reduces to a perfectly good data-type application. The fix is to *state the
+  result type in the unfolded form* — `\instance F ... : SomeClass (Trunc0 (Omega^ (suc n) X))` rather
+  than `... : SomeClass (pi (suc n) X)`. The two are definitionally equal, so nothing downstream
+  changes; only instance resolution needs the syntactic form. If you genuinely cannot unfold it,
+  demote to `\func` and give up instance inference for that definition.
+
+- **A class-valued definition cannot be passed unapplied as a function.** `pmap2 ProductGroup p q`
+  fails with `Parameter 'G' must be specified explicitly / In: ProductGroup`, because an
+  `\instance`/`\func` returning a class is not usable as a bare function value. Eta-expand:
+  `pmap2 (\lam (G H : Group.{u}) => ProductGroup G H) p q`. Same for `pmap`, `transport` motives, and
+  anywhere else a higher-order argument is expected.
+
 - **Arithmetic on a *concrete* record instance computes, and that breaks term-level tooling.** `ComplexField.*` is implemented by a formula on `re`/`im`, so `x * y` with either operand concrete normalizes to `\new Complex (x.re * y.re - x.im * y.im) (…)`. Consequences (all verified 2026-07-29 on `Algebra/Field/FTA.ard`): `equation.cRing` cannot prove even `x * y = y * x` at `Complex`; `rewrite` cannot match a pattern containing a meta under a `*`/`+`; and unification cannot infer an implicit that occurs only under one. **Keep such algebra symbolic: state the step over an abstract `{C : CRing}` (or make the operands explicit parameters of a helper) and instantiate.** Abstract class parameters are what keep a term neutral — this is a general reason a helper lemma over `{M : AbMonoid}` succeeds where the same proof inlined at the concrete instance fails. See **arend-prove** failure modes 15–17 for the diagnostics.
 
 ## 5. Universes, levels, and `\Prop`
@@ -455,7 +474,17 @@ When making your record a descendant of another (e.g. `\record RatAnalytic ... \
 
 These pitfalls compound: a single naïve `| InheritedField => method-defined-later` line can trigger any of forward-reference-failure, implicit-arg-failure, *and* implementation-cycle errors, none of which name the underlying ordering/scoping issue. When debugging a record refactor, audit field-default expressions for: (a) only-fields-and-top-level-functions referenced, (b) all implicit args spelled out, (c) `|`-block ends before the first `\func`/`\lemma`, (d) sibling-class method calls (like `open-char`) are qualified with the receiver instance.
 
-## 21. Quick decision table when stuck
+## 21. Syntax traps that only fire inside a statement
+
+- **A field projection `R.field {e}` inline in a result type can fail to elaborate**, reporting `Cannot solve equation` at some *neighbouring* operator instead. Binding it to its own `\func` first and using that name fixes it. Rule: give every structure-valued value that appears in a later statement its own name.
+
+- **Backtick sections only work on unqualified operators.** `` (`*> p) `` is fine; `` (`M.op x) `` fails with `Postfix notation is not allowed here` naming whatever prefix of `M.op` the parser reached, plus a bogus `Parameter must be specified explicitly`. Write the lambda instead.
+
+- **Do not name a binder after a field of a class you use.** A parameter `{E : C}` shadows the field `E` that `C`'s coercion goes through, and notation defined in terms of that coercion then fails to elaborate — with `Cannot solve equation` pointing at some unrelated operator, never at the name. Renaming the binder is the whole fix.
+
+- **If a lemma's conclusion is a `\func`-defined type, its arguments cannot be inferred from the expected type.** For `\func P {A : C} (f : F A) : \Prop => <Pi-type>`, a lemma concluding `P f'` with `f'` *implicit* is unusable: the expected type arrives already unfolded, so the elaborator tries to invert the body — typically reporting a mismatch between a carrier and a field projection (`Trunc0 E` vs `BaseSet.E`) rather than anything about `f'`. Make such arguments explicit parameters.
+
+## 22. Quick decision table when stuck
 
 | Symptom | First thing to try |
 |---|---|

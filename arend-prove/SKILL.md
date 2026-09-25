@@ -413,6 +413,11 @@ Solves `f x_1 ... x_n = f y_1 ... y_n` given the equalities `x_i = y_i` somewher
 
 Record copattern form: `ext R { | f_1 => p_1 | f_2 => p_2 | ... }`.
 
+**`ext` recurses into nested function types.** For `f = g` between functions that themselves return
+functions, `ext` does not stop at `\Pi x -> f x = g x` — it asks for the *doubly* pointwise proof
+`\Pi x y -> f x y = g x y`. So nesting (`ext (\lam x => ext (h x))`) fails with the inner `ext`
+unable to see its goal; pass the curried proof to a single `ext` instead.
+
 ### `linarith` — Fourier–Motzkin for linear arithmetic
 
 Dispatches on the in-scope `LinearlyOrderedSemiring` / `OrderedRing` instance. Reads hypotheses from the context automatically — you don't pass them explicitly when they're already named in scope.

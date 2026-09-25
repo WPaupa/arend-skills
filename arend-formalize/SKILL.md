@@ -106,6 +106,19 @@ Goal: a typechecking file where the only remaining errors are the `{?}`s represe
 
 6. **Done when the only remaining errors are `GOAL` (unproven `{?}`s).** Type-mismatch, unresolved-reference, universe-level, and termination errors must all be gone. If any non-GOAL error remains, you're not done.
 
+   **Once, at the very end, confirm with a cold `arend -r --serialize`.** A warm-cache green is not
+   fully authoritative: instance inference can succeed against loaded `.arc` caches and then fail
+   from source. A qualifier deleted as "redundant" (`SomeClass.field {theInstance} args` →
+   `field args`) can pass every incremental run and break the cold build with
+   `Cannot infer an instance of class 'C'`. The reverse never happens, so one cold pass settles it.
+
+   **Do this rarely — ideally exactly once per piece of work.** `-r` discards the caches and
+   re-typechecks the whole library, so it costs minutes where the scoped incremental run costs
+   seconds; running it in the edit loop destroys the entire point of `--serialize`. Iterate with
+   `arend --serialize <Module>`, and spend the cold pass only when you believe you are finished —
+   most usefully right after a compaction pass, which is exactly when you have been deleting
+   explicit arguments.
+
 7. **Re-read the final statement against the informal claim.** Variable order, implicit/explicit splits, universe levels, and class parameters all change meaning. The Arend statement that typechecks is not necessarily the formalization of what you were given — verify by hand.
 
 ---

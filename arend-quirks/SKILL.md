@@ -148,6 +148,13 @@ What Arend does (`tutorial/PartI/records.md`, `language-reference/definitions/re
   `pmap2 (\lam (G H : Group.{u}) => ProductGroup G H) p q`. Same for `pmap`, `transport` motives, and
   anywhere else a higher-order argument is expected.
 
+- **Elements of a group defined by a `\func` lose instance inference.** With `\func Q => G // N` or
+  `CodeGroup V x`, writing `x * y` or `ide-right` fails with `Cannot infer an instance … classifying
+  expression: Quotient …`, because the carrier is unfolded before the search. Pass the instance
+  (`ide-right {Q} {x}`), or state the helper over a variable `{L : Group}` and instantiate it. A partial
+  application `Group.* {Q} a` elaborates as the *right* section `\lam _x => _x * a`; use
+  `pmap2 (Group.* {Q}) idp p` instead.
+
 - **Arithmetic on a *concrete* record instance computes, and that breaks term-level tooling.** `ComplexField.*` is implemented by a formula on `re`/`im`, so `x * y` with either operand concrete normalizes to `\new Complex (x.re * y.re - x.im * y.im) (…)`. Consequences (all verified 2026-07-29 on `Algebra/Field/FTA.ard`): `equation.cRing` cannot prove even `x * y = y * x` at `Complex`; `rewrite` cannot match a pattern containing a meta under a `*`/`+`; and unification cannot infer an implicit that occurs only under one. **Keep such algebra symbolic: state the step over an abstract `{C : CRing}` (or make the operands explicit parameters of a helper) and instantiate.** Abstract class parameters are what keep a term neutral — this is a general reason a helper lemma over `{M : AbMonoid}` succeeds where the same proof inlined at the concrete instance fails. See **arend-prove** failure modes 15–17 for the diagnostics.
 
 ## 5. Universes, levels, and `\Prop`

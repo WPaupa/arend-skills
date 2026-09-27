@@ -143,6 +143,10 @@ collapse under `\elim b, q, c, r | _, idp, _, idp`. Coherences that look intimid
 reduce to `idp` in the fully-eliminated case — **write the `| _, idp, _, idp => idp` clause first and
 let the typechecker tell you** before investing in a hand-built 2-path.
 
+The same applies to whole theorems: take pointing witnesses `(f0 : f a0 = b0)` as parameters and
+`\elim` them *in the top-level definition*. A `\where` helper cannot mention the parent's `.{u}`, and
+the canonical case usually needs it.
+
 Refactoring an existing definition to sit on top of such a helper is safe when the new body is
 *definitionally* the old one: dependent proofs keep working untouched.
 

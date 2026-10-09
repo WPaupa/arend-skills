@@ -134,6 +134,7 @@ Two traps follow. A `\where` member cannot name the parent's level parameter, so
 | `Cannot solve equation u <= constant` | You passed a level-`u` object where something concrete (typically level 0) was expected, or vice versa. Pass the level explicitly: `f.{u} args`. |
 | `Infinite level is not allowed here` | A truncated universe (`\Set`, `\n-Type`) or a class with a `\Set`/`\Type u` carrier appeared where a *finite* level is required. Most often in an ascription like `a = {Group} b`; write `= {Group.{u}}` and give the enclosing definition a `.{u}`. |
 | `Type mismatch: Expected C.{?p1} / Actual C` | A definition declared over bare (infinite) `C` is being fed to something declared over `C.{u}`. See "Declared result level vs. actual level". |
+| Warning `Variable ?p is solved to 0 while not bounded from either side` | A level-polymorphic definition is used where nothing pins its level. Typical cases are a `\Prop`-valued witness such as `point : IsCW.{u} (\Sigma)`, or a type small enough to fit any universe. Apply the ambient level, `point.{u}` or `unit-isFinCW.{u}`, rather than `.{0}`, so the enclosing definition stays polymorphic. |
 | Two printed types that look character-for-character identical | Look for elided `.{...}`. Re-read with the level annotations in mind before suspecting anything else. |
 
 ---

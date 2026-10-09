@@ -13,14 +13,16 @@ tells the agent when to load it.
 | [`arend-quirks`](arend-quirks/SKILL.md) | Survival notes on how Arend's syntax and semantics differ from Coq/Agda/Lean — the things that surprise you after reading the tutorial. |
 | [`arend-levels`](arend-levels/SKILL.md) | Universe-level errors: when a definition needs its own `.{u}`, how level parameters propagate, why cumulativity does not rescue a universe-indexed proposition, and which messages mean "this is a level problem". |
 | [`arend-hott`](arend-hott/SKILL.md) | Synthetic homotopy theory in arend-lib: truncation index conventions, eliminating out of `\truncated \data`, path induction on a structure field, and the h-level/equivalence helpers worth reusing. |
+| [`arend-perf`](arend-perf/SKILL.md) | Slow typechecking: measuring per-definition times, isolating the step where the elaborator normalizes a large term, and the fixes (an opaque `\sfunc` + eval lemma at the right layer, named abbreviations, explicit `=` types). |
 | [`arend-error-type-mismatch`](arend-error-type-mismatch/SKILL.md) | Diagnosing misleading `Type mismatch: Expected X, Actual Y` errors, where the printed types are downstream effects of an upstream name-resolution or implicit-inference failure. |
 | [`arend-error-extraneous-input`](arend-error-extraneous-input/SKILL.md) | Diagnosing `extraneous input '<tok>' expecting {...}` parser errors. The reported token is almost never the bug. |
 
 `arend-formalize` → `arend-prove` is the intended pipeline: the first gets a file
 to the point where only goals remain, the second closes them. The two
 `arend-error-*` skills are reference material consulted when a typecheck fails,
-as are `arend-levels` (for level errors specifically) and `arend-hott` (when the
-subject matter is homotopy-theoretic).
+as are `arend-levels` (for level errors specifically), `arend-hott` (when the
+subject matter is homotopy-theoretic) and `arend-perf` (when a definition takes
+seconds or minutes to check).
 
 ## Installation
 

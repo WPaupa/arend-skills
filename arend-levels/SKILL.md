@@ -115,6 +115,11 @@ separate slot. Write `f.{u} args`, at every call in the body.
 A definition whose **result type** pins the level is immune, which is why factoring a subterm out
 into its own named `\func` with a spelled-out result type fixes this as a side effect.
 
+Even when nothing fails, an unsolved level costs time. Two copies of the same term with different
+level metavariables do not match structurally, so every comparison between them normalizes both
+sides. In level-polymorphic developments, write `.{u}` on calls in slow proofs as a matter of course
+(**arend-perf** 4.6).
+
 ## Transporting along a path *between types*
 
 `transport (\lam T => T) p x` fails with `Cannot infer parameter 'A' of definition 'transport'` and

@@ -88,6 +88,17 @@ Two more mechanisms feed it:
   carry that implementation around.
 - **`pmap f p`** reads its endpoint and codomain types off `p` and `f`. Those types can likewise come
   back normalized.
+- **Unsolved universe levels.** A call to a level-polymorphic definition without `.{u}` gets a level
+  metavariable `?p`. Two occurrences of the same source text then carry different metavariables, the
+  structural comparison fails, and both sides are normalized. In one measurement, `idp : t = t` for a
+  term `t` built from a few level-polymorphic homomorphisms took 322ms with inferred levels and 6ms
+  with `.{u}` written on every call (see 4.6).
+- **Recursive definitions at indices with concrete `suc`s.** A definition by recursion on a `Nat` whose
+  `suc` clause mentions the recursive call more than once (directly, or through a record component and
+  a proof about it, as a functorial action on iterated loop spaces does) unfolds to a term that doubles
+  with every concrete `suc` in the index. The same `idp` took 21ms at index `suc (suc n)`, 83ms at three
+  `suc`s and 1.3s at four. Indices built by arithmetic such as `n + suc k` produce such `suc`s silently
+  (see 4.7).
 
 ## 4. Fixes, in order of preference
 
@@ -159,7 +170,10 @@ consider this when a `\where` block repeats the same long implicit-argument list
   proposition".
 - **A definition whose *value* is used** (a group homomorphism, a chain map) but whose body is
   expensive can also be an `\sfunc` + `eval`. Then the downstream lemmas state their equations in
-  terms of the opaque name and rewrite with `eval` only at the start and the end.
+  terms of the opaque name and rewrite with `eval` only at the start and the end. For a functorial
+  construction, prove its laws (identity, composition, congruence in the map, naturality,
+  equivalence) once in its `\where`, each with one `eval` step, and let every other proof use only
+  those laws. Then no proof outside that block ever unfolds the body.
 
 ### 4.5 Restate a slow lemma in the vocabulary of its caller
 
@@ -167,12 +181,45 @@ If a helper is stated with a different but convertible spelling of the terms the
 the caller pays a normalizing comparison at every use. One example is the helper saying `CellStep.of F n`
 while the caller says `CellSteps.lower (towerSteps F)`. State the helper with the caller's spelling.
 
+### 4.6 Spell out universe levels
+
+When the definitions involved are level-polymorphic, write `.{u}` on every call in both the
+statement and the proof of a slow lemma, including calls to lemmas and to the level-polymorphic
+definitions inside lambdas passed to `pmap`. A helper that names a lambda (`\func row.{u} … => …`)
+and is then applied as `row.{u} …` fixes the level of an otherwise inferred lambda. The test for this
+cause: copy the slow equation into a scratch module twice, once without and once with explicit
+levels, and compare `idp` on each side.
+
+### 4.7 Keep recursion indices symbolic
+
+If a definition from §3's last bullet is used at an index such as `suc (suc (suc d))`, make the
+arithmetic opaque: put the index behind an `\sfunc` (`\sfunc twice (m : Nat) : Nat => m + m`, with
+`\peval` lemmas relating `twice (suc m)` to `suc (suc (twice m))`), and move between equal indices with
+an explicit cast defined by `\elim` on the index equality. The cast's naturality and equivalence
+lemmas are one-line `| _, idp => …` proofs. At most two concrete `suc`s on a variable keep the
+unfolding small.
+
+### 4.8 Prove record equalities with a lemma, not with `exts` at the use site
+
+`exts` on an equation between records with propositional fields (homomorphisms, for example)
+elaborates the record structure at the call site, which is slow when the two sides are composites
+of expensive definitions. In one case `exts p` took 2s and `equals p` 0.2s, where `equals` is a lemma
+proved once by `exts` over variables:
+
+```arend
+\lemma equals {G H : AddGroup} {f g : AddGroupHom G H} (p : \Pi (x : G) -> f x = g x) : f = g
+  => exts p
+```
+
+Pass the two sides as explicit implicits, `equals {_} {_} {lhs} {rhs} p`. Otherwise `f` and `g` are
+inferred from partially normalized forms of the goal and the argument's type no longer matches.
+
 ## 5. What did not help
 
 - Explicit implicit arguments on `pmap degreeHom p` (still 1.5s).
 - Binding the term with `\let` first.
-- Explicit universe levels. These terms had no level arguments that differed. Check
-  `-p` before suspecting levels.
+- Explicit universe levels, when the terms had no level arguments that differed. Check `-p`
+  before suspecting levels. Where levels *are* inferred, they matter a lot (4.6).
 - Making the structure-producing layer (`columnAction`) opaque while leaving the inner data
   (`degreeMatrix`) transparent. The type of `=` stopped being a singleton, but `idp` still
   normalized (2.4s).
